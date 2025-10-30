@@ -1,0 +1,49 @@
+name: Build Native Installers
+on: 
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            profile: linux
+            installer-ext: .deb
+          - os: windows-latest
+            profile: win  
+            installer-ext: .msi
+          - os: macos-latest
+            profile: mac-aarch64
+            installer-ext: .dmg
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+        
+    - name: Build with Maven
+      run: mvn clean package -P${{ matrix.profile }}
+      
+    - name: List built files
+      run: ls -la target/dist/
+      
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.os }}-installer
+        path: target/dist/*${{ matrix.installer-ext }}
+        retention-days: 30
